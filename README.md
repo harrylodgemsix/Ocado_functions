@@ -1,48 +1,48 @@
 Create 2 storage buckets:
 
-new - for new files being uploaded to gcp
-main - for storing processed files
+    new - for new files being uploaded to gcp
+    main - for storing processed files
 
 Create the following secrets:
 
-facebook_ad_account_zoom
-facebook_ad_account_supplier_activity
-facebook_access_token
-facebook_app_id
-facebook_app_secret
+    facebook_ad_account_zoom
+    facebook_ad_account_supplier_activity
+    facebook_access_token
+    facebook_app_id
+    facebook_app_secret
 
-ad accounts are different, but access token, app id and secret will stay the same as it uses same app.
+    ad accounts are different, but access token, app id and secret will stay the same as it uses same app.
 
-access token needs to be updated every 60 days
+    access token needs to be updated every 60 days
 
 Create cloud functions:
 
-trigger type: HTTP
-require authentication
-memory allocated: 1gb is probably fine
-timeout: 540 - maximum run time
-runtime service account: use service account with secret manager access
+    trigger type: HTTP
+    require authentication
+    memory allocated: 1gb is probably fine
+    timeout: 540 - maximum run time
+    runtime service account: use service account with secret manager access
 
-For facebook api:
+    For facebook api:
 
-create runtime environment variables:
-project_id
-upload_bucket
+        create runtime environment variables:
+        project_id
+        upload_bucket
 
-edit entry point to be either function in the main.py file
+        edit entry point to be either function in the main.py file
 
-for facebook gcs to gbq:
+    for facebook gcs to gbq:
 
-create runtime environment variables:
-project_id
-upload_bucket - the new file storage bucket
-new_bucket - the main storage bucket
-bigquery_import_table - the table in which our daily data will be uploaded to
-bigquery_main_table - the table in which our daily data will be inserted into - - contains all data
+        create runtime environment variables:
+        project_id
+        upload_bucket - the new file storage bucket
+        new_bucket - the main storage bucket
+        bigquery_import_table - the table in which our daily data will be uploaded to
+        bigquery_main_table - the table in which our daily data will be inserted into - - contains all data
 
-bigquery import and main tables require dataset too e.g. dataset.table
+        bigquery import and main tables require dataset too e.g. dataset.table
 
-this function will create the import table but i believe you will need to manually create the main table
+        this function will create the import table but i believe you will need to manually create the main table
 
 Create workflow:
 
