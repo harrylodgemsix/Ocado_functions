@@ -29,7 +29,7 @@ def facebook_api_call_zoom(request):
 
 def facebook_api_call_supplier_activity(request):
     for i in dates_to_query:
-        fb = fbConnectorForGCP(i, zoom_ad_account, access_token, app_id, app_secret,
+        fb = fbConnectorForGCP(i, supplier_activity_ad_account, access_token, app_id, app_secret,
                                upload_bucket, "supplier_activity", project_id)
         fb.run()
 
