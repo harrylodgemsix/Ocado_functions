@@ -1,0 +1,13 @@
+- facebook:
+    call: http.get
+    args:
+      url: <YOUR FUNCTION URL>
+      auth:
+        type: OIDC
+
+- facebook_gcs_to_gbq:
+    call: http.get
+    args:
+      url: <YOUR FUNCTION URL>
+      auth:
+        type: OIDC
