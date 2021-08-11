@@ -6,29 +6,19 @@ import sys
 import uuid
 from datetime import date, timedelta
 from platform import version
+from typing import ValuesView
 
 import pandas as pd
-from pandas.core.frame import DataFrame
 import requests
 from facebook_business.adobjects.adaccount import AdAccount
 from facebook_business.api import FacebookAdsApi
 from google.cloud import bigquery, secretmanager, storage
 from google.oauth2 import service_account
 from googleapiclient import discovery, http
-from pandas.io.json import json_normalize
+from pandas import json_normalize
+from pandas.core.frame import DataFrame
 
-FIELDS_FOR_CAMPAIGNS = 'campaign_id, impressions'
-
-FIELDS_FOR_ADS = 'account_name ,  account_id ,  ad_name ,  ad_id ,  adset_name ,  adset_id ,  campaign_name ,  campaign_id , account_currency,action_values,actions,attribution_setting,buying_type,canvas_avg_view_time,catalog_segment_value,clicks,conversion_rate_ranking,conversion_values,conversions,converted_product_quantity,converted_product_value,cost_per_action_type,cost_per_conversion,cost_per_estimated_ad_recallers,cost_per_inline_link_click,cost_per_inline_post_engagement,cost_per_outbound_click,cost_per_thruplay,cost_per_unique_action_type,cost_per_unique_click,cost_per_unique_inline_link_click,cost_per_unique_outbound_click,cpc,cpm,cpp,ctr,engagement_rate_ranking,estimated_ad_recall_rate,estimated_ad_recallers,frequency,full_view_impressions,full_view_reach,impressions,inline_link_click_ctr,inline_link_clicks,inline_post_engagement,instant_experience_clicks_to_open,instant_experience_clicks_to_start,instant_experience_outbound_clicks,mobile_app_purchase_roas,objective,outbound_clicks,outbound_clicks_ctr,place_page_name,purchase_roas,qualifying_question_qualify_answer_rate,quality_ranking,reach,social_spend,spend,unique_actions,unique_clicks,unique_ctr,unique_inline_link_click_ctr,unique_inline_link_clicks,unique_link_clicks_ctr,unique_outbound_clicks,unique_outbound_clicks_ctr,video_30_sec_watched_actions,video_avg_time_watched_actions,video_p100_watched_actions,video_p25_watched_actions,video_p50_watched_actions,video_p75_watched_actions,video_p95_watched_actions,video_play_actions,video_play_curve_actions,website_ctr,website_purchase_roas'
-
-FIELDS = ["account_name",	"account_id",	"ad_name",	"ad_id",	"adset_name",	"adset_id",	"campaign_name", "campaign_id", "publisher_platform", "platform_position", "impression_device", "date_start", "date_stop",	"account_currency",	"action_values",	"actions",	"attribution_setting",	"buying_type",	"canvas_avg_view_time",	"catalog_segment_value",	"clicks",	"conversion_rate_ranking",	"conversion_values",	"conversions",	"converted_product_quantity",	"converted_product_value",	"cost_per_action_type",	"cost_per_conversion",	"cost_per_estimated_ad_recallers",	"cost_per_inline_link_click",	"cost_per_inline_post_engagement",	"cost_per_outbound_click",	"cost_per_thruplay",	"cost_per_unique_action_type",	"cost_per_unique_click",	"cost_per_unique_inline_link_click",	"cost_per_unique_outbound_click",	"cpc",	"cpm",	"cpp",	"ctr",	"engagement_rate_ranking",	"estimated_ad_recall_rate",	"estimated_ad_recallers",	"frequency",	"full_view_impressions",
-          "full_view_reach",	"impressions",	"inline_link_click_ctr",	"inline_link_clicks",	"inline_post_engagement",	"instant_experience_clicks_to_open",	"instant_experience_clicks_to_start",	"instant_experience_outbound_clicks",	"mobile_app_purchase_roas",	"objective",	"outbound_clicks",	"outbound_clicks_ctr",	"place_page_name",	"purchase_roas",	"qualifying_question_qualify_answer_rate",	"quality_ranking",	"reach",	"social_spend",	"spend",	"unique_actions",	"unique_clicks",	"unique_ctr",	"unique_inline_link_click_ctr",	"unique_inline_link_clicks",	"unique_link_clicks_ctr",	"unique_outbound_clicks",	"unique_outbound_clicks_ctr",	"video_30_sec_watched_actions",	"video_avg_time_watched_actions",	"video_p100_watched_actions",	"video_p25_watched_actions",	"video_p50_watched_actions",	"video_p75_watched_actions",	"video_p95_watched_actions",	"video_play_actions",	"video_play_curve_actions",	"website_ctr", "website_purchase_roas"]
-
-ACTION_TYPE_LIST = ["app_custom_event.fb_mobile_achievement_unlocked",  "app_custom_event.fb_mobile_activate_app",  "app_custom_event.fb_mobile_add_payment_info",  "app_custom_event.fb_mobile_add_to_cart",  "app_custom_event.fb_mobile_add_to_wishlist", "app_custom_event.fb_mobile_complete_registration",  "app_custom_event.fb_mobile_content_view",  "app_custom_event.fb_mobile_initiated_checkout", "app_custom_event.fb_mobile_level_achieved",  "app_custom_event.fb_mobile_purchase",  "app_custom_event.fb_mobile_rate",  "app_custom_event.fb_mobile_search",  "app_custom_event.fb_mobile_spent_credits",   "app_custom_event.fb_mobile_tutorial_completion",  "app_custom_event.other",  "app_install",  "app_use",  "checkin",   "comment",  "credit_spent",  "games.plays", "landing_page_view", "like", "link_click", "mobile_app_install",  "offsite_conversion.fb_pixel_add_payment_info",  "offsite_conversion.fb_pixel_add_to_cart", "offsite_conversion.fb_pixel_add_to_wishlist", "offsite_conversion.fb_pixel_complete_registration",  "offsite_conversion.fb_pixel_custom",  "offsite_conversion.fb_pixel_initiate_checkout",  "offsite_conversion.fb_pixel_lead", "offsite_conversion.fb_pixel_purchase", "offsite_conversion.fb_pixel_search", "offsite_conversion.fb_pixel_view_content", "onsite_conversion.flow_complete", "onsite_conversion.messaging_block", "onsite_conversion.messaging_conversation_started_7d", "onsite_conversion.messaging_first_reply",   "onsite_conversion.post_save",   "onsite_conversion.purchase",   "photo_view",   "post",   "post_reaction",   "rsvp",   "video_view",
-                    "contact_total",   "contact_website",   "contact_mobile_app", "contact_offline", "customize_product_total",  "customize_product_website",  "customize_product_mobile_app",  "customize_product_offline",  "donate_total",  "donate_website", "donate_on_facebook", "donate_mobile_app", "donate_offline",  "find_location_total",  "find_location_website",  "find_location_mobile_app",  "find_location_offline",  "schedule_total",  "schedule_website",   "schedule_mobile_app", "schedule_offline", "start_trial_total",  "start_trial_website",  "start_trial_mobile_app",  "start_trial_offline",  "submit_application_total", "submit_application_website",  "submit_application_mobile_app", "submit_application_offline",  "submit_application_on_facebook", "subscribe_total", "subscribe_website",  "subscribe_mobile_app",  "subscribe_offline",  "recurring_subscription_payment_total",  "recurring_subscription_payment_website",  "recurring_subscription_payment_mobile_app",  "recurring_subscription_payment_offline",  "cancel_subscription_total", "cancel_subscription_website", "cancel_subscription_mobile_app",  "cancel_subscription_offline",  "ad_click_mobile_app",  "ad_impression_mobile_app",  "click_to_call_call_confirm",  "page_engagement",  "post_engagement",  "onsite_conversion.lead_grouped",  "lead",  "leadgen_grouped",  "omni_app_install",   "omni_purchase",  "omni_add_to_cart",  "omni_complete_registration",  "omni_view_content",  "omni_search",  "omni_initiated_checkout",  "omni_achievement_unlocked", "omni_activate_app",  "omni_level_achieved",  "omni_rate", "omni_spend_credits", "omni_tutorial_completion"]
-
-NEW_COL_NAME = ["mobile_app_feature_unlocks", "mobile_app_starts", "mobile_app_payment_details",  "mobile_app_adds_to_cart",  "mobile_app_adds_to_wishlist",  "mobile_app_registrations",  "mobile_app_content_views",  "mobile_app_checkouts",  "mobile_app_achievements",  "mobile_app_purchases",  "mobile_app_ratings", "mobile_app_searchs", "mobile_app_credit_spends", "mobile_app_tutorial_completions", "other_mobile_app_actions", "app_installs", "app_uses", "check_ins", "post_comments", "credit_spends", "game_plays", "landing_page_views", "page_likes", "link_clicks", "mobile_app_installs", "adds_payment_info", "adds_to_cart", "adds_to_wishlist", "completed_registration", "custom_pixel_events_defined_by_the_advertiser", "initiates_checkout", "leads", "purchases", "searchs", "views_content", "on_facebook_workflow_completions", "blocked_messaging_conversations", "messaging_conversations_started", "new_messaging_conversations", "post_saves", "on_facebook_purchases", "page_photo_views", "post_shares", "post_reactions", "event_responses",   "video_views_3_seconds",   "contacts",   "website_contacts",  "mobile_app_contacts",  "offline_contacts",  "products_customized",  "website_products_customized",  "mobile_app_products_customized", "offline_products_customized", "donations", "website_donations", "on_facebook_donations", "mobile_app_donations",  "offline_donations", "location_searches",
-                "website_location_searches", "mobile_app_location_searches", "offline_app_location_searches", "appointments_scheduled", "website_appointments_scheduled", "mobile_app_appointments_scheduled", "offline_app_appointments_scheduled", "trials_started", "website_trials_started", "mobile_app_trials_started", "offline_trials_started", "applications_submitted", "website_applications_submitted", "mobile_app_applications_submitted", "offline_applications_submitted", "on_facebook_applications_submitted", "subscriptions", "website_subscriptions", "mobile_app_subscriptions", "offline_subscriptions", "recurring_subscription_payments", "website_recurring_subscription_payments", "mobile_app_recurring_subscription_payments", "offline_recurring_subscription_payments", "canceled_subscriptions", "website_canceled_subscriptions", "mobile_app_canceled_subscriptions", "offline_canceled_subscriptions", "in_app_ad_clicks", "in_app_ad_impressions", "call_confirmation_clicks", "page_engagement", "post_engagement", "all_on_facebook_leads", "all_offsite_leads_plus_all_on_facebook_leads", "on_facebook_leads_coming_from_messenger_and_instant_forms", "omni_app_installs", "omni_purchases", "omni_adds_to_cart", "omni_registrations_completed", "omni_content_views", "omni_searches", "omni_checkouts_initiated", "omni_achievements_unlocked", "omni_app_activations", "omni_levels_achieved", "omni_ratings_submitted", "omni_credit_spends", "omni_tutorials_completed"]
+import fields
 
 
 def get_secret(project_id, secret_id):
@@ -43,83 +33,104 @@ def get_secret(project_id, secret_id):
 
 
 class fbConnectorForGCP():
-    def __init__(self, date_to_query, ad_account, access_token, app_id, app_secret, upload_bucket, folder_name, project_id):
-        self.date_to_query = date_to_query
+    def __init__(
+            self,
+            ad_account,
+            ad_account_name,
+            access_token,
+            app_id,
+            app_secret,
+            upload_bucket,
+            project_id):
         self.ad_account = ad_account
+        self.ad_account_name = ad_account_name
         self.access_token = access_token
         self.app_id = app_id
         self.app_secret = app_secret
-        self.upload_dataset_destination = None
-        self.upload_table_destination = None
         self.project_id = project_id
         self.all_campaign_ids = []
         self.active_campaign_ids = []
-        self.df_to_upload = None
+        self.df = None
         self.storage_bucket_name = upload_bucket
-        self.folder_name = folder_name
-
-    def run(self):
-        self.authenticate()
-        self.get_active_campaign_ids()
-        self.get_ad_data()
-        self.upload()
 
     def authenticate(self):
         FacebookAdsApi.init(self.app_id, self.app_secret, self.access_token)
         print("Authentication successful")
 
-    def get_active_campaign_ids(self):
+    def get_active_campaign_ids(self, date_list):
+        self.start_date = date_list[0]
+        self.end_date = date_list[-1]
+
         get_ids = AdAccount(self.ad_account).get_campaigns()
         for i in get_ids:
             data = dict(i)
             self.all_campaign_ids.append(data["id"])
 
-        campaign_id_df = self.__call_api("campaign",
-                                         FIELDS_FOR_CAMPAIGNS, self.all_campaign_ids)
+        campaign_id_df = self.__call_api(
+            "campaign", fields.FIELDS_FOR_CAMPAIGNS, self.all_campaign_ids)
 
-        self.active_campaign_ids = pd.concat(campaign_id_df).reset_index(
+        active_campaign_ids = pd.concat(campaign_id_df).reset_index(
             drop=True).campaign_id.to_list()
+
+        # converts to set then back to list to remove duplicates
+        self.unique_active_campaign_ids = list(set(active_campaign_ids))
 
         print("Get active campaign ids successful")
 
-    def get_ad_data(self):
+    def get_ad_data(self, date):
+        self.date_to_query = date
         df_list = self.__call_api(
-            "ad", FIELDS_FOR_ADS, self.active_campaign_ids)
+            "ad", fields.FIELDS_FOR_ADS, self.unique_active_campaign_ids)
 
-        df = pd.concat(df_list).reset_index(
+        self.df = pd.concat(df_list).reset_index(
             drop=True)
 
-        self.df_to_upload = self.__transform_df(df)
-        print(self.df_to_upload)
+    def transform(self):
 
-        print("Get ad data successful")
+        self.df = self.df.fillna(0)
+
+        # splits out actions column metrics into seperate columns
+        for index, action_type in enumerate(fields.ACTION_TYPE_LIST):
+            value = self.__flatten_actions(self.df, action_type)
+            value_series = pd.Series(value)
+            self.df = pd.concat((self.df, value_series.rename(
+                fields.NEW_COL_NAME[index])), axis=1)
+
+        # if field not in df then add it in
+        for k in fields.FIELDS + fields.NEW_COL_NAME:
+            if k not in self.df:
+                self.df[k] = 0
+
+        print("Transform successful")
 
     def upload(self):
 
-        self.storage_blob_name = "fb/{}/{}.csv".format(
-            self.folder_name, self.date_to_query)
+        self.storage_blob_name = f"fb/{self.ad_account_name}/{self.date_to_query}.csv"
 
         client = storage.Client()
         bucket = client.get_bucket(self.storage_bucket_name)
         blob = bucket.blob(self.storage_blob_name)
 
-        # upload_destination = self.upload_dataset_destination + \
-        #   "." + self.upload_table_destination
+        df = self.df
 
-        df = self.df_to_upload
+        output = df.applymap(
+            lambda x: x[0].get("value") if isinstance(
+                x, list) is True and len(x) == 1 else x).fillna(0).to_csv(
+            index=False)
 
-        output = df.applymap(lambda x: x[0].get("value") if isinstance(
-            x, list) is True and len(x) == 1 else x).fillna(0).to_csv(index=False)
         blob.upload_from_string(output)
+
         print("Data upload successful")
 
     def __call_api(self, granularity, fields_string, campaign_ids):
+
         if granularity == "campaign":
             params = (
-                # to use time range instead of date present remove the comments and comment in the date preset
-                ('time_range[since]', self.date_to_query),
-                ('time_range[until]', self.date_to_query),
-                #('date_preset', 'yesterday'),
+                # to use time range instead of date present remove the comments
+                # and comment in the date preset
+                ('time_range[since]', self.start_date),
+                ('time_range[until]', self.end_date),
+                # ('date_preset', 'yesterday'),
                 ('time_increment', '1'),
                 ('level', granularity),
                 ('fields', fields_string),
@@ -127,15 +138,17 @@ class fbConnectorForGCP():
             )
         else:
             params = (
-                # to use time range instead of date present remove the comments and comment in the date preset
+                # to use time range instead of date present remove the comments
+                # and comment in the date preset
                 ('time_range[since]', self.date_to_query),
                 ('time_range[until]', self.date_to_query),
-                #('date_preset', 'yesterday'),
+                # ('date_preset', 'yesterday'),
                 ('time_increment', '1'),
                 ('level', granularity),
                 ('fields', fields_string),
                 ('breakdowns', 'publisher_platform, platform_position, impression_device'),
                 ('access_token', self.access_token),
+                ('use_unified_attribution_setting', 'true'),
             )
 
         df = []
@@ -149,7 +162,8 @@ class fbConnectorForGCP():
                 df.append(json_normalize(json_obj["data"]))
 
                 try:
-                    while ((json_obj["paging"] != None) and (json_obj["paging"]["next"] != None)):
+                    while ((json_obj["paging"] is not None) and (
+                            json_obj["paging"]["next"] is not None)):
                         response = requests.get(json_obj["paging"]["next"])
                         json_obj = json.loads(response.text)
                         df.append(json_normalize(json_obj["data"]))
@@ -162,20 +176,28 @@ class fbConnectorForGCP():
         print("Api call successful")
         return df
 
-    def __transform_df(self, df):
-        for row in range(df["actions"].shape[0]):
-            if type(df["actions"][row]) == list:
-                for i in df["actions"][row]:
-                    for j in range(len(ACTION_TYPE_LIST)):
-                        if i["action_type"] == ACTION_TYPE_LIST[j]:
-                            df.loc[row, NEW_COL_NAME[j]] = i["value"]
-                    else:
-                        0
-            else:
-                0
+    def __flatten_actions(self, df, action_type):
 
-        for k in FIELDS+NEW_COL_NAME:
-            if k not in df:
-                df[k] = 0
-        print("Transform successful")
-        return df
+        value = []
+        for action in df["actions"]:
+            # if action row is 0 then append 0
+            # df.fillna(0) should have been used before this
+            if action == 0:
+                value.append(0)
+
+            # if there is not action type in i then append 0
+            elif not any(i["action_type"] == action_type for i in action):
+                value.append(0)
+
+            # if action type in i then append i["value"]
+            # if only 1d_view etc. is in dict then
+            # append 0
+            else:
+                for i in action:
+                    if i["action_type"] == action_type:
+                        if i.get("value"):
+                            value.append(i["value"])
+                        else:
+                            value.append(0)
+
+        return value
